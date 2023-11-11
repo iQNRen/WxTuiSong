@@ -14,6 +14,8 @@ def get_color():
     return random.choice(color_list)
  
  
+# https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="wx03128739273e2cd4"&secret="9ad2c696b07784badadc270044a2fa67"
+
 def get_access_token():
     # appId
     app_id = config["app_id"]
@@ -27,7 +29,8 @@ def get_access_token():
         print("获取access_token失败，请检查app_id和app_secret是否正确")
         os.system("pause")
         sys.exit(1)
-    # print(access_token)
+    print(access_token)
+
     return access_token
  
  
@@ -37,8 +40,10 @@ def get_weather(region):
                       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'
     }
     key = config["weather_key"]
+    HF_key =config["HF_weather_key"]
     region_url = "https://geoapi.qweather.com/v2/city/lookup?location={}&key={}".format(region, key)
     response = get(region_url, headers=headers).json()
+    print(response)
     if response["code"] == "404":
         print("推送消息失败，请检查地区名是否有误！")
         os.system("pause")
@@ -50,8 +55,11 @@ def get_weather(region):
     else:
         # 获取地区的location--id
         location_id = response["location"][0]["id"]
-    weather_url = "https://devapi.qweather.com/v7/weather/now?location={}&key={}".format(location_id, key)
+        print(location_id)
+    weather_url = "https://devapi.qweather.com/v7/weather/now?location={}&key={}".format(location_id, HF_key)
     response = get(weather_url, headers=headers).json()
+
+    print(response)
     # 天气
     weather = response["now"]["text"]
     # 当前温度
@@ -110,9 +118,8 @@ def get_ciba():
                       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'
     }
     r = get(url, headers=headers)
-    note_en = r.json()["content"]
     note_ch = r.json()["note"]
-    return note_ch, note_en
+    return note_ch
  
  
 def send_message(to_user, access_token, region_name, weather, temp, wind_dir, note_ch, note_en):
@@ -123,25 +130,15 @@ def send_message(to_user, access_token, region_name, weather, temp, wind_dir, no
     day = localtime().tm_mday
     today = datetime.date(datetime(year=year, month=month, day=day))
     week = week_list[today.isoweekday() % 7]
-    # 获取在一起的日子的日期格式
-    love_year = int(config["love_date"].split("-")[0])
-    love_month = int(config["love_date"].split("-")[1])
-    love_day = int(config["love_date"].split("-")[2])
-    love_date = date(love_year, love_month, love_day)
-    # 获取在一起的日期差
-    love_days = str(today.__sub__(love_date)).split(" ")[0]
-           # 获取在一起的日子的日期格式
-    lov_year = int(config["lov_date"].split("-")[0])
-    lov_month = int(config["lov_date"].split("-")[1])
-    lov_day = int(config["lov_date"].split("-")[2])
-    lov_date = date(lov_year, lov_month, lov_day)
-    # 获取在一起的日期差
-    lov_days = str(today.__sub__(lov_date)).split(" ")[0]
-    # 获取所有生日数据
-    birthdays = {}
-    for k, v in config.items():
-        if k[0:5] == "birth":
-            birthdays[k] = v
+    # 获取创建时间的日期格式
+    create_year = int(config["date"].split("-")[0])
+    create_month = int(config["date"].split("-")[1])
+    create_day = int(config["date"].split("-")[2])
+    create_date = date(create_year, create_month, create_day)
+    # 获取现在持续时间的日期差
+    days = str(today.__sub__(create_date)).split(" ")[0]
+
+
     data = {
         "touser": to_user,
         "template_id": config["template_id"],
@@ -168,12 +165,8 @@ def send_message(to_user, access_token, region_name, weather, temp, wind_dir, no
                 "value": wind_dir,
                 "color": get_color()
             },
-            "love_day": {
-                "value": love_days,
-                "color": get_color()
-            },
-            "note_en": {
-                "value": note_en,
+            "day":{
+                "value": days,
                 "color": get_color()
             },
             "note_ch": {
@@ -182,15 +175,8 @@ def send_message(to_user, access_token, region_name, weather, temp, wind_dir, no
             }
         }
     }
-    for key, value in birthdays.items():
-        # 获取距离下次生日的时间
-        birth_day = get_birthday(value["birthday"], year, today)
-        if birth_day == 0:
-            birthday_data = "今天{}生日哦，祝{}生日快乐！".format(value["name"], value["name"])
-        else:
-            birthday_data = "距离{}的生日还有{}天".format(value["name"], birth_day)
-        # 将生日数据插入data
-        data["data"][key] = {"value": birthday_data, "color": get_color()}
+
+
     headers = {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -231,9 +217,9 @@ if __name__ == "__main__":
     weather, temp, wind_dir = get_weather(region)
     note_ch = config["note_ch"]
     note_en = config["note_en"]
-    if note_ch == "" and note_en == "":
+    if note_ch == "":
         # 获取词霸每日金句
-        note_ch, note_en = get_ciba()
+        note_ch = get_ciba()
     # 公众号推送消息
     for user in users:
         send_message(user, accessToken, region, weather, temp, wind_dir, note_ch, note_en)
