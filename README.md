@@ -25,7 +25,7 @@ https://www.coolapk.com/feed/38579891?shareKey=NGI3ZGZlZTM4MDBjNjMwMzdlM2M~&shar
 
 风向：{{wind_dir.DATA}} 
 
-今天是我开始学习第{{day}}天
+今天是开始学习第{{day.DATA}}天
 
 每日一句：{{note_ch.DATA}}
 
